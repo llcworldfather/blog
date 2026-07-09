@@ -1,0 +1,47 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import EntryCard from '../../components/EntryCard.astro';
+import { slugify } from '../../utils/slugify';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('posts');
+
+  // 收集所有标签及其对应文章
+  const tagMap = new Map<string, typeof posts>();
+  posts.forEach((post) => {
+    post.data.tags.forEach((tag) => {
+      if (!tagMap.has(tag)) tagMap.set(tag, []);
+      tagMap.get(tag)!.push(post);
+    });
+  });
+
+  return [...tagMap.entries()].map(([tag, tagPosts]) => ({
+    params: { tag: slugify(tag) },
+    props: {
+      tag,
+      posts: tagPosts.sort((a, b) => b.data.date.getTime() - a.data.date.getTime()),
+    },
+  }));
+}
+
+interface Props {
+  tag: string;
+  posts: any[];
+}
+
+const { tag, posts } = Astro.props;
+---
+
+<BaseLayout title={`标签：${tag}`} description={`标签「${tag}」下的所有手记`}>
+  <section class="tag-page">
+    <div class="wrap">
+      <h1>#{tag}</h1>
+      <p class="tag-sub">共 {posts.length} 篇手记</p>
+
+      <div class="entry-list">
+        {posts.map((entry) => <EntryCard entry={entry} />)}
+      </div>
+    </div>
+  </section>
+</BaseLayout>

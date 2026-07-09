@@ -1,0 +1,72 @@
+---
+---
+
+<section class="subscribe" id="subscribe">
+  <div class="wrap">
+    <div>
+      <h3>不想错过新的手记？</h3>
+      <p>大概每周更新一到两篇，不会有别的东西打扰你。</p>
+    </div>
+    <form class="sub-form" id="subscribe-form">
+      <input type="email" id="subscribe-email" placeholder="你的邮箱地址" required />
+      <button type="submit" id="subscribe-btn">订阅</button>
+    </form>
+    <p class="sub-msg" id="subscribe-msg" aria-live="polite"></p>
+  </div>
+
+  <script>
+    import { addSubscriber } from '../utils/subscribers';
+
+    const form = document.getElementById('subscribe-form') as HTMLFormElement | null;
+    const emailInput = document.getElementById('subscribe-email') as HTMLInputElement | null;
+    const btn = document.getElementById('subscribe-btn') as HTMLButtonElement | null;
+    const msg = document.getElementById('subscribe-msg') as HTMLParagraphElement | null;
+
+    const messages: Record<string, string> = {
+      success: '订阅成功，感谢你的关注 🌿',
+      exists: '这个邮箱已经订阅过啦，无需重复订阅。',
+      error: '订阅失败，请检查邮箱地址是否正确。',
+      empty: '请输入有效的邮箱地址。',
+    };
+
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!emailInput || !btn || !msg) return;
+
+      const email = emailInput.value;
+      if (!email.trim()) {
+        msg.textContent = messages.empty;
+        msg.style.color = 'var(--accent)';
+        return;
+      }
+
+      btn.disabled = true;
+      const originalText = btn.textContent;
+      btn.textContent = '订阅中…';
+      msg.textContent = '';
+
+      try {
+        const result = await addSubscriber(email);
+        msg.textContent = messages[result] ?? messages.error;
+        msg.style.color = result === 'success' ? 'var(--moss)' : 'var(--accent)';
+        if (result === 'success') form.reset();
+      } catch {
+        msg.textContent = messages.error;
+        msg.style.color = 'var(--accent)';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    });
+  </script>
+</section>
+
+<style>
+  .sub-msg {
+    width: 100%;
+    margin: 10px 0 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    min-height: 18px;
+  }
+</style>

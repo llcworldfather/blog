@@ -1,0 +1,23 @@
+---
+import { ABOUT_LINKS } from '../consts';
+---
+
+<section class="about" id="about">
+  <div class="wrap" style="display:grid; grid-template-columns:200px 1fr; gap:56px; align-items:start;">
+    <div class="avatar">拾</div>
+    <div class="about-content">
+      <h2>关于写字的这个人</h2>
+      <p>一个普通的记录者，喜欢在琐碎里找一点值得留下来的东西。白天做设计相关的工作，晚上留一点时间给自己，写点没有用但真实的文字。</p>
+      <p>这个博客没有明确的主题，如果一定要说，大概是"认真对待普通的一天"。</p>
+      <div class="about-links">
+        {
+          ABOUT_LINKS.map((link) => (
+            <a href={link.href} target={link.href.startsWith('http') ? '_blank' : undefined} rel={link.href.startsWith('http') ? 'noopener noreferrer' : undefined}>
+              {link.label}
+            </a>
+          ))
+        }
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,23 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import EntryCard from '../../components/EntryCard.astro';
+import Subscribe from '../../components/Subscribe.astro';
+
+const posts = (await getCollection('posts')).sort(
+  (a, b) => b.data.date.getTime() - a.data.date.getTime()
+);
+---
+
+<BaseLayout title="随笔" description="所有手记的完整列表">
+  <section class="entries" id="entries">
+    <div class="wrap">
+      <div class="section-label">全部手记 · {posts.length} 篇</div>
+      <div class="entry-list">
+        {posts.map((entry) => <EntryCard entry={entry} />)}
+      </div>
+    </div>
+  </section>
+
+  <Subscribe />
+</BaseLayout>

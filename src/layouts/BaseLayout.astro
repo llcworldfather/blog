@@ -1,0 +1,80 @@
+---
+import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const { title = SITE_TITLE, description = SITE_DESCRIPTION } = Astro.props;
+const fullTitle = title === SITE_TITLE ? title : `${title} — ${SITE_TITLE}`;
+---
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{fullTitle}</title>
+  <meta name="description" content={description} />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700;900&family=EB+Garamond:ital,wght@0,500;1,500;1,600&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="alternate" type="application/rss+xml" title={SITE_TITLE} href="/rss.xml" />
+</head>
+<body>
+  <Header />
+  <slot />
+  <Footer />
+
+  <script>
+    // 初始化 Firebase Analytics（仅生产环境）
+    import('../utils/firebase.ts').then(({ initAnalytics }) => {
+      initAnalytics().catch((e) => console.warn('Analytics 初始化失败:', e));
+    });
+
+    // 滚动淡入动画
+    const entries = document.querySelectorAll('.entry');
+    const io = new IntersectionObserver(
+      (items) => {
+        items.forEach((item) => {
+          if (item.isIntersecting) {
+            item.target.classList.add('in-view');
+            io.unobserve(item.target);
+          }
+        });
+      },
+      { threshold: 0.15 }
+    );
+    entries.forEach((el) => io.observe(el));
+
+    // 顶部导航滚动高亮（简单版）
+    const navLinks = document.querySelectorAll('nav a');
+    const sectionIds = ['#top', '#entries', '#about', '#subscribe'];
+    const sections = sectionIds
+      .map((id) => document.querySelector(id))
+      .filter(Boolean) as HTMLElement[];
+
+    if (sections.length > 0) {
+      window.addEventListener('scroll', () => {
+        let current = sections[0];
+        sections.forEach((sec) => {
+          if (sec && window.scrollY + 120 >= sec.offsetTop) {
+            current = sec;
+          }
+        });
+        navLinks.forEach((a) => {
+          a.classList.toggle('active', a.getAttribute('href') === '#' + current.id);
+        });
+      });
+    }
+  </script>
+</body>
+</html>

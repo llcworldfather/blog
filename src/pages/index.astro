@@ -1,0 +1,31 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Hero from '../components/Hero.astro';
+import EntryCard from '../components/EntryCard.astro';
+import About from '../components/About.astro';
+import Subscribe from '../components/Subscribe.astro';
+
+const posts = (await getCollection('posts')).sort(
+  (a, b) => b.data.date.getTime() - a.data.date.getTime()
+);
+
+// 首页只展示最新 5 篇
+const recentPosts = posts.slice(0, 5);
+---
+
+<BaseLayout>
+  <Hero />
+
+  <section class="entries" id="entries">
+    <div class="wrap">
+      <div class="section-label">最新手记</div>
+      <div class="entry-list">
+        {recentPosts.map((entry) => <EntryCard entry={entry} />)}
+      </div>
+    </div>
+  </section>
+
+  <About />
+  <Subscribe />
+</BaseLayout>

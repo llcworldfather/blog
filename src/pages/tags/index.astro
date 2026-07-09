@@ -1,0 +1,36 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { slugify } from '../../utils/slugify';
+
+const posts = await getCollection('posts');
+
+// 统计每个标签的文章数
+const tagMap = new Map<string, number>();
+posts.forEach((post) => {
+  post.data.tags.forEach((tag) => {
+    tagMap.set(tag, (tagMap.get(tag) ?? 0) + 1);
+  });
+});
+
+const tags = [...tagMap.entries()].sort((a, b) => b[1] - a[1]);
+---
+
+<BaseLayout title="标签" description="按标签浏览所有手记">
+  <section class="tag-page">
+    <div class="wrap">
+      <h1>标签归档</h1>
+      <p class="tag-sub">共 {tags.length} 个标签 · {posts.length} 篇手记</p>
+
+      <div class="tag-cloud">
+        {
+          tags.map(([tag, count]) => (
+            <a href={`/tags/${slugify(tag)}`}>
+              {tag}<span class="count">{count}</span>
+            </a>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+</BaseLayout>

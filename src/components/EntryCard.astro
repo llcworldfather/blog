@@ -1,0 +1,31 @@
+---
+import MoodIcon from './MoodIcon.astro';
+import { slugify } from '../utils/slugify';
+import type { Post } from '../utils/posts';
+
+interface Props {
+  entry: Post;
+}
+
+const { entry } = Astro.props;
+
+const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const dateLabel = `${months[entry.date.getMonth()]} ${String(entry.date.getDate()).padStart(2, '0')}`;
+---
+
+<article class="entry">
+  <span class="mood-icon" title={entry.mood}>
+    <MoodIcon mood={entry.mood} />
+  </span>
+  <span class="entry-date"><span class="num">{dateLabel}</span> · {entry.mood}</span>
+  <h3><a href={`/posts/${entry.slug}`}>{entry.title}</a></h3>
+  <p class="excerpt">{entry.excerpt}</p>
+  <div class="entry-foot">
+    {
+      entry.tags.map((tag) => (
+        <a href={`/tags/${slugify(tag)}`} class="tag">{tag}</a>
+      ))
+    }
+    <a href={`/posts/${entry.slug}`} class="read-more">继续阅读 →</a>
+  </div>
+</article>
