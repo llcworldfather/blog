@@ -12,7 +12,6 @@ import {
   deleteDoc,
   serverTimestamp,
   type DocumentData,
-  type QueryConstraint,
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -63,7 +62,7 @@ function toPost(id: string, data: DocumentData): Post {
 export async function getAllPosts(): Promise<Post[]> {
   const q = query(collection(db, COLLECTION_NAME), orderBy('date', 'desc'));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => toPost(d.id, d.data()));
+  return snap.docs.map((d: { id: string; data: () => DocumentData }) => toPost(d.id, d.data()));
 }
 
 /**
@@ -105,7 +104,7 @@ export async function getPostsByTag(tag: string): Promise<Post[]> {
     orderBy('date', 'desc')
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => toPost(d.id, d.data()));
+  return snap.docs.map((d: { id: string; data: () => DocumentData }) => toPost(d.id, d.data()));
 }
 
 /**

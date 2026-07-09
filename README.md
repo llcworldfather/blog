@@ -7,7 +7,9 @@
 - 📝 **Markdown 写作** — 通过 Content Collections 管理，支持 frontmatter 类型校验
 - 🏷️ **标签归档** — 自动生成标签云和标签筛选页
 - 📡 **RSS 订阅** — 开箱即用的 `/rss.xml` 订阅源
-- 🔥 **Firebase 集成** — Analytics 访问统计 + Firestore 邮件订阅持久化
+- 🔥 **Firebase 集成** — Analytics 访问统计 + Firestore 文章存储 + 邮件订阅持久化
+- 📡 **REST API** — 文章 CRUD 接口，支持通过 API 管理博客内容
+- 🛠️ **管理后台** — 可视化文章管理界面（新建/编辑/删除），访问 `/admin` 即可使用
 - 🎨 **纸质感设计** — 米麻纸色 + 深墨棕 + 信笺紫 + 苔绿，衬线字体为主
 - 📱 **响应式** — 移动端时间轴和卡片正常堆叠降级
 - ⚡ **零 JS 默认** — 仅保留轻量滚动淡入动效，保持阅读的安静感
@@ -54,6 +56,13 @@ E:/blog/
 │   ├── pages/
 │   │   ├── index.astro          # 首页
 │   │   ├── about.astro          # 关于页
+│   │   ├── admin/               # 管理后台
+│   │   │   ├── index.astro      # 文章列表（查看/删除）
+│   │   │   ├── new.astro        # 写新文章
+│   │   │   └── edit/[id].astro  # 编辑文章
+│   │   ├── api/                 # REST API 端点
+│   │   │   ├── posts/           # 文章 CRUD
+│   │   │   └── tags/            # 标签查询
 │   │   ├── posts/
 │   │   │   ├── index.astro      # 随笔列表
 │   │   │   └── [slug].astro     # 文章详情
@@ -126,16 +135,65 @@ excerpt: 一句话摘要，显示在列表页和 RSS 中。
 | 服务 | 用途 | 说明 |
 |------|------|------|
 | **Analytics** | 访问统计 | 仅生产环境初始化，开发环境不收集数据 |
-| **Firestore** | 订阅者持久化 | 邮箱订阅写入 `subscribers` 集合 |
+| **Firestore** | 文章 + 订阅者持久化 | `posts` 集合存储文章，`subscribers` 集合存储订阅邮箱 |
 
 ### Firestore 数据结构
 
-`subscribers` 集合（自动创建）：
+`posts` 集合：
+
+```
+posts/{autoId}
+  ├── slug: string           // URL 标识
+  ├── title: string          // 标题
+  ├── date: timestamp        // 发布日期
+  ├── mood: string           // 心情/天气
+  ├── tags: string[]         // 标签数组
+  ├── excerpt: string        // 摘要
+  ├── content: string        // Markdown 正文
+  ├── createdAt: timestamp   // 创建时间
+  └── updatedAt: timestamp   // 更新时间
+```
+
+`subscribers` 集合：
 
 ```
 subscribers/{autoId}
   ├── email: string      // 订阅邮箱（小写存储）
   └── createdAt: timestamp // 订阅时间（服务器时间戳）
+```
+
+### REST API
+
+项目提供以下 API 端点（SSR 模式）：
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `GET` | `/api/posts` | 获取全部文章 |
+| `POST` | `/api/posts` | 创建新文章 |
+| `GET` | `/api/posts/{id}` | 获取单篇文章 |
+| `PUT` | `/api/posts/{id}` | 更新文章 |
+| `DELETE` | `/api/posts/{id}` | 删除文章 |
+| `GET` | `/api/tags` | 获取所有标签及计数 |
+| `GET` | `/api/tags/{tag}` | 获取标签下的文章 |
+
+### 管理后台
+
+访问 `/admin` 即可使用可视化文章管理界面：
+
+| 路径 | 功能 |
+|------|------|
+| `/admin` | 文章列表，支持查看/编辑/删除 |
+| `/admin/new` | 写新文章（Markdown 编辑器） |
+| `/admin/edit/{id}` | 编辑已有文章 |
+
+导航栏已添加"管理"入口，点击即可进入后台。
+
+### 数据迁移
+
+将现有 Markdown 文章上传到 Firestore：
+
+```bash
+npm run seed
 ```
 
 ### Firestore 安全规则建议

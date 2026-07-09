@@ -1,0 +1,160 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+export const prerender = false;
+---
+
+<BaseLayout title="管理后台" description="文章管理">
+  <section class="admin-page">
+    <div class="wrap">
+      <div class="admin-header">
+        <h1>文章管理</h1>
+        <a href="/admin/new" class="admin-btn">+ 写新文章</a>
+      </div>
+
+      <div id="admin-list">
+        <p class="admin-loading">加载中…</p>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    const list = document.getElementById('admin-list') as HTMLElement;
+
+    async function loadPosts() {
+      try {
+        const res = await fetch('/api/posts');
+        const posts = await res.json();
+        renderPosts(posts);
+      } catch (e) {
+        list.innerHTML = '<p class="admin-error">加载失败，请先运行 npm run seed 上传文章</p>';
+      }
+    }
+
+    function renderPosts(posts: any[]) {
+      if (!posts || posts.length === 0) {
+        list.innerHTML = '<p class="admin-empty">还没有文章，点击右上角写第一篇吧。</p>';
+        return;
+      }
+
+      list.innerHTML = `
+        <table class="admin-table">
+          <thead>
+            <tr><th>标题</th><th>日期</th><th>心情</th><th>标签</th><th>操作</th></tr>
+          </thead>
+          <tbody>
+            ${posts.map((p) => `
+              <tr>
+                <td>${p.title}</td>
+                <td>${new Date(p.date).toLocaleDateString('zh-CN')}</td>
+                <td>${p.mood}</td>
+                <td>${(p.tags || []).join('、')}</td>
+                <td class="admin-actions">
+                  <a href="/posts/${p.slug}" target="_blank">查看</a>
+                  <a href="/admin/edit/${p.id}">编辑</a>
+                  <button class="admin-del" data-id="${p.id}" data-title="${p.title}">删除</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+
+      // 绑定删除按钮
+      list.querySelectorAll('.admin-del').forEach((btn) => {
+        btn.addEventListener('click', async (e) => {
+          const target = e.currentTarget as HTMLButtonElement;
+          const id = target.dataset.id;
+          const title = target.dataset.title;
+          if (!confirm(`确定删除「${title}」吗？此操作不可撤销。`)) return;
+          target.disabled = true;
+          target.textContent = '删除中…';
+          try {
+            const res = await fetch(`/api/posts/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+              loadPosts();
+            } else {
+              alert('删除失败');
+              target.disabled = false;
+              target.textContent = '删除';
+            }
+          } catch {
+            alert('删除失败');
+            target.disabled = false;
+            target.textContent = '删除';
+          }
+        });
+      });
+    }
+
+    loadPosts();
+  </script>
+</BaseLayout>
+
+<style>
+  .admin-page { padding: 64px 0; }
+  .admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40px;
+  }
+  .admin-header h1 { font-size: 32px; font-weight: 800; margin: 0; }
+  .admin-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    padding: 10px 20px;
+    background: var(--ink);
+    color: var(--paper);
+    border-radius: 2px;
+    transition: background 0.2s ease;
+  }
+  .admin-btn:hover { background: var(--accent); }
+  .admin-loading, .admin-empty, .admin-error {
+    color: var(--ink-soft);
+    font-size: 15px;
+    text-align: center;
+    padding: 40px 0;
+  }
+  .admin-error { color: var(--accent); }
+  .admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .admin-table th {
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 2px solid var(--line);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .admin-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .admin-table tr:hover td { background: var(--paper-alt); }
+  .admin-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+  .admin-actions a {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+  }
+  .admin-del {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: #c0392b;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+  }
+  .admin-del:hover { text-decoration: underline; }
+</style>

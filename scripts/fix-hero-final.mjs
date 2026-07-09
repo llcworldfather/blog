@@ -1,6 +1,6 @@
 import { writeFileSync, readFileSync } from 'node:fs';
 
-const content = `---
+const newContent = `---
 import { getAllPosts } from '../utils/posts';
 
 const posts = await getAllPosts();
@@ -28,7 +28,11 @@ const weekday = weekdays[now.getDay()];
 </section>
 `;
 
-writeFileSync('E:/blog/src/components/Hero.astro', content, 'utf8');
+writeFileSync('E:/blog/src/components/Hero.astro', newContent, 'utf8');
+
+// Verify
 const verify = readFileSync('E:/blog/src/components/Hero.astro', 'utf8');
-console.log('File written. First 80 chars:');
-console.log(verify.substring(0, 80));
+const lines = verify.split('\n');
+console.log('Line 2:', lines[1]);
+console.log('Line 4:', lines[3]);
+console.log('Match:', lines[1].includes('getAllPosts'));

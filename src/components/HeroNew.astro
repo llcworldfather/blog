@@ -1,13 +1,11 @@
-import { writeFileSync, readFileSync } from 'node:fs';
-
-const content = `---
+---
 import { getAllPosts } from '../utils/posts';
 
 const posts = await getAllPosts();
 const postCount = posts.length;
 
 const now = new Date();
-const dateStr = \`\${now.getFullYear()} 年 \${now.getMonth() + 1} 月 \${now.getDate()} 日\`;
+const dateStr = `${now.getFullYear()} 年 ${now.getMonth() + 1} 月 ${now.getDate()} 日`;
 const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
 const weekday = weekdays[now.getDay()];
 ---
@@ -26,9 +24,3 @@ const weekday = weekdays[now.getDay()];
     <a href="/posts" class="cta">开始阅读 →</a>
   </div>
 </section>
-`;
-
-writeFileSync('E:/blog/src/components/Hero.astro', content, 'utf8');
-const verify = readFileSync('E:/blog/src/components/Hero.astro', 'utf8');
-console.log('File written. First 80 chars:');
-console.log(verify.substring(0, 80));

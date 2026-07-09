@@ -1,12 +1,12 @@
 ---
-import { getCollection } from 'astro:content';
+import { getAllPosts } from '../../utils/posts';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import EntryCard from '../../components/EntryCard.astro';
 import Subscribe from '../../components/Subscribe.astro';
 
-const posts = (await getCollection('posts')).sort(
-  (a, b) => b.data.date.getTime() - a.data.date.getTime()
-);
+export const prerender = false;
+
+const posts = await getAllPosts();
 ---
 
 <BaseLayout title="随笔" description="所有手记的完整列表">

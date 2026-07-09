@@ -1,0 +1,235 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+
+export const prerender = false;
+---
+
+<BaseLayout title="编辑文章" description="编辑文章">
+  <section class="admin-page">
+    <div class="wrap">
+      <div class="admin-header">
+        <h1>编辑文章</h1>
+        <a href="/admin" class="admin-back">← 返回列表</a>
+      </div>
+
+      <form id="post-form" class="post-form">
+        <p class="admin-loading">加载文章中…</p>
+      </form>
+    </div>
+  </section>
+
+  <script>
+    const form = document.getElementById('post-form') as HTMLFormElement;
+    const postId = window.location.pathname.split('/').pop();
+
+    async function loadPost() {
+      try {
+        const res = await fetch(`/api/posts/${postId}`);
+        if (!res.ok) {
+          form.innerHTML = '<p class="admin-error">文章不存在或加载失败</p>';
+          return;
+        }
+        const post = await res.json();
+        renderForm(post);
+      } catch {
+        form.innerHTML = '<p class="admin-error">加载失败</p>';
+      }
+    }
+
+    function renderForm(post: any) {
+      const dateStr = new Date(post.date).toISOString().split('T')[0];
+      form.innerHTML = `
+        <div class="form-row">
+          <label for="title">标题</label>
+          <input type="text" id="title" value="${post.title}" required />
+        </div>
+        <div class="form-grid">
+          <div class="form-row">
+            <label for="slug">URL 标识 (slug)</label>
+            <input type="text" id="slug" value="${post.slug}" required />
+          </div>
+          <div class="form-row">
+            <label for="date">日期</label>
+            <input type="date" id="date" value="${dateStr}" required />
+          </div>
+          <div class="form-row">
+            <label for="mood">心情/天气</label>
+            <select id="mood" required>
+              ${['晴','多云','雨','夜','风','雪','雾'].map(m =>
+                `<option value="${m}" ${post.mood === m ? 'selected' : ''}>${m}</option>`
+              ).join('')}
+            </select>
+          </div>
+          <div class="form-row">
+            <label for="tags">标签</label>
+            <input type="text" id="tags" value="${(post.tags || []).join(', ')}" />
+            <p class="form-hint">多个标签用英文逗号隔开</p>
+          </div>
+        </div>
+        <div class="form-row">
+          <label for="excerpt">摘要</label>
+          <textarea id="excerpt" rows="2" required>${post.excerpt}</textarea>
+        </div>
+        <div class="form-row">
+          <label for="content">正文 (Markdown)</label>
+          <textarea id="content" rows="18" required>${post.content}</textarea>
+        </div>
+        <div class="form-actions">
+          <button type="submit" id="submit-btn" class="admin-btn">保存修改</button>
+          <a href="/admin" class="form-cancel">取消</a>
+        </div>
+        <p class="form-msg" id="form-msg"></p>
+      `;
+
+      form.addEventListener('submit', handleSubmit);
+    }
+
+    async function handleSubmit(e: Event) {
+      e.preventDefault();
+      const btn = document.getElementById('submit-btn') as HTMLButtonElement;
+      const msg = document.getElementById('form-msg') as HTMLParagraphElement;
+      btn.disabled = true;
+      btn.textContent = '保存中…';
+      msg.textContent = '';
+
+      const tags = (document.getElementById('tags') as HTMLInputElement).value
+        .split(',').map((t) => t.trim()).filter(Boolean);
+
+      const body = {
+        title: (document.getElementById('title') as HTMLInputElement).value,
+        slug: (document.getElementById('slug') as HTMLInputElement).value,
+        date: (document.getElementById('date') as HTMLInputElement).value,
+        mood: (document.getElementById('mood') as HTMLSelectElement).value,
+        tags,
+        excerpt: (document.getElementById('excerpt') as HTMLTextAreaElement).value,
+        content: (document.getElementById('content') as HTMLTextAreaElement).value,
+      };
+
+      try {
+        const res = await fetch(`/api/posts/${postId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (res.ok) {
+          msg.style.color = 'var(--moss)';
+          msg.textContent = '保存成功！正在跳转…';
+          setTimeout(() => (window.location.href = '/admin'), 1000);
+        } else {
+          msg.style.color = 'var(--accent)';
+          msg.textContent = '保存失败';
+          btn.disabled = false;
+          btn.textContent = '保存修改';
+        }
+      } catch {
+        msg.style.color = 'var(--accent)';
+        msg.textContent = '网络错误';
+        btn.disabled = false;
+        btn.textContent = '保存修改';
+      }
+    }
+
+    loadPost();
+  </script>
+</BaseLayout>
+
+<style>
+  .admin-page { padding: 64px 0; }
+  .admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40px;
+  }
+  .admin-header h1 { font-size: 32px; font-weight: 800; margin: 0; }
+  .admin-back {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .admin-back:hover { color: var(--accent); }
+  .post-form { max-width: 720px; }
+  .form-row { margin-bottom: 24px; }
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  .form-row label {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-faint);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .form-row input,
+  .form-row select,
+  .form-row textarea {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    background: var(--paper-alt);
+    font-family: 'Noto Serif SC', serif;
+    font-size: 15px;
+    color: var(--ink);
+  }
+  .form-row input:focus,
+  .form-row select:focus,
+  .form-row textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .form-row textarea {
+    resize: vertical;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .form-hint {
+    font-size: 12px;
+    color: var(--ink-faint);
+    margin: 6px 0 0;
+  }
+  .form-actions {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-top: 32px;
+  }
+  .admin-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    padding: 10px 24px;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+  .admin-btn:hover { background: var(--accent); }
+  .admin-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .form-cancel {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .form-cancel:hover { color: var(--accent); }
+  .form-msg {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    margin-top: 16px;
+    min-height: 18px;
+  }
+  .admin-loading, .admin-error {
+    color: var(--ink-soft);
+    font-size: 15px;
+  }
+  .admin-error { color: var(--accent); }
+  @media (max-width: 720px) {
+    .form-grid { grid-template-columns: 1fr; }
+  }
+</style>

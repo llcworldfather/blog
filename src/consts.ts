@@ -8,6 +8,7 @@ export const NAV_LINKS = [
   { href: '/posts', label: '随笔' },
   { href: '/about', label: '关于' },
   { href: '/#subscribe', label: '订阅' },
+  { href: '/admin', label: '管理' },
 ];
 
 export const ABOUT_LINKS = [
