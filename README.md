@@ -178,15 +178,36 @@ subscribers/{autoId}
 
 ### 管理后台
 
-访问 `/admin` 即可使用可视化文章管理界面：
+管理后台受密码保护，只有登录后才能访问。
 
 | 路径 | 功能 |
 |------|------|
+| `/admin/login` | 管理员登录页 |
 | `/admin` | 文章列表，支持查看/编辑/删除 |
 | `/admin/new` | 写新文章（Markdown 编辑器） |
 | `/admin/edit/{id}` | 编辑已有文章 |
 
-导航栏已添加"管理"入口，点击即可进入后台。
+**认证机制**：
+- 基于 cookie session 的密码认证
+- 未登录访问 `/admin/*` 自动跳转到登录页
+- API 写操作（POST/PUT/DELETE）需要认证，否则返回 401
+- 导航栏的"管理"入口仅登录后显示，登录后还会显示"登出"按钮
+- Session 有效期 7 天
+
+**配置密码**：
+
+复制 `.env.example` 为 `.env` 并修改密码：
+
+```bash
+cp .env.example .env
+```
+
+```env
+ADMIN_PASSWORD=你的密码
+SESSION_SECRET=随机密钥
+```
+
+> ⚠️ 生产环境务必修改默认密码和密钥！
 
 ### 数据迁移
 

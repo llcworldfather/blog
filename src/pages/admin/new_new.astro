@@ -1,0 +1,135 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+export const prerender = false;
+---
+
+<BaseLayout title="写新文章" description="创建新文章">
+  <section class="admin-page">
+    <div class="wrap">
+      <div class="admin-header">
+        <div class="admin-title-group">
+          <span class="admin-label">NEW POST</span>
+          <h1>写新文章</h1>
+        </div>
+        <a href="/admin" class="admin-back">← 返回列表</a>
+      </div>
+
+      <form id="post-form" class="post-form">
+        <div class="form-row">
+          <label for="title">标题</label>
+          <input type="text" id="title" name="title" required placeholder="文章标题" />
+        </div>
+
+        <div class="form-grid">
+          <div class="form-row">
+            <label for="slug">URL 标识 (slug)</label>
+            <input type="text" id="slug" name="slug" required placeholder="如：lou-xia-de-mao" />
+            <p class="form-hint">访问地址将为 /posts/你的slug</p>
+          </div>
+          <div class="form-row">
+            <label for="date">日期</label>
+            <input type="date" id="date" name="date" required />
+          </div>
+          <div class="form-row">
+            <label for="mood">心情/天气</label>
+            <select id="mood" name="mood" required>
+              <option value="晴">☀ 晴</option>
+              <option value="多云">☁ 多云</option>
+              <option value="雨">☂ 雨</option>
+              <option value="夜">☾ 夜</option>
+              <option value="风">≋ 风</option>
+              <option value="雪">❄ 雪</option>
+              <option value="雾">≡ 雾</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label for="tags">标签</label>
+            <input type="text" id="tags" name="tags" placeholder="日常, 思考" />
+            <p class="form-hint">多个标签用英文逗号隔开</p>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label for="excerpt">摘要</label>
+          <textarea id="excerpt" name="excerpt" rows="2" required placeholder="一句话摘要，显示在列表页"></textarea>
+        </div>
+
+        <div class="form-row">
+          <label for="content">正文 (Markdown)</label>
+          <textarea id="content" name="content" rows="20" required placeholder="支持 Markdown 语法…"></textarea>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" id="submit-btn" class="admin-btn">发布文章</button>
+          <a href="/admin" class="form-cancel">取消</a>
+        </div>
+        <p class="form-msg" id="form-msg"></p>
+      </form>
+    </div>
+  </section>
+
+  <script>
+    const form = document.getElementById('post-form') as HTMLFormElement;
+    const btn = document.getElementById('submit-btn') as HTMLButtonElement;
+    const msg = document.getElementById('form-msg') as HTMLParagraphElement;
+    const dateInput = document.getElementById('date') as HTMLInputElement;
+    dateInput.value = new Date().toISOString().split('T')[0];
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      btn.disabled = true; btn.textContent = '发布中…'; msg.textContent = '';
+      const tags = (document.getElementById('tags') as HTMLInputElement).value.split(',').map((t) => t.trim()).filter(Boolean);
+      const body = {
+        title: (document.getElementById('title') as HTMLInputElement).value,
+        slug: (document.getElementById('slug') as HTMLInputElement).value,
+        date: (document.getElementById('date') as HTMLInputElement).value,
+        mood: (document.getElementById('mood') as HTMLSelectElement).value,
+        tags, excerpt: (document.getElementById('excerpt') as HTMLTextAreaElement).value,
+        content: (document.getElementById('content') as HTMLTextAreaElement).value,
+      };
+      try {
+        const res = await fetch('/api/posts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const data = await res.json();
+        if (res.ok) { msg.style.color = 'var(--moss)'; msg.textContent = '发布成功！正在跳转…'; setTimeout(() => (window.location.href = '/admin'), 1000); }
+        else { msg.style.color = 'var(--accent)'; msg.textContent = data.error || '发布失败'; btn.disabled = false; btn.textContent = '发布文章'; }
+      } catch { msg.style.color = 'var(--accent)'; msg.textContent = '网络错误'; btn.disabled = false; btn.textContent = '发布文章'; }
+    });
+  </script>
+</BaseLayout>
+
+<style>
+  .admin-page { padding: 72px 0 96px; }
+  .admin-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 48px; padding-bottom: 28px; border-bottom: 1px solid var(--line); }
+  .admin-title-group { display: flex; flex-direction: column; gap: 6px; }
+  .admin-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.2em; color: var(--ink-faint); text-transform: uppercase; }
+  .admin-header h1 { font-size: 36px; font-weight: 900; margin: 0; letter-spacing: 0.02em; }
+  .admin-back { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--ink-soft); display: inline-flex; align-items: center; gap: 6px; transition: color 0.2s ease; }
+  .admin-back:hover { color: var(--accent); }
+  .post-form { max-width: 760px; }
+  .form-row { margin-bottom: 28px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .form-row label { display: block; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-faint); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.1em; }
+  .form-row input, .form-row select, .form-row textarea {
+    width: 100%; padding: 12px 16px; border: 1px solid var(--line); border-radius: 3px;
+    background: var(--paper-alt); font-family: 'Noto Serif SC', serif; font-size: 15px; color: var(--ink);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .form-row input:focus, .form-row select:focus, .form-row textarea:focus {
+    outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(91,75,138,0.08);
+  }
+  .form-row textarea { resize: vertical; font-family: 'JetBrains Mono', monospace; font-size: 14px; line-height: 1.7; }
+  .form-hint { font-size: 12px; color: var(--ink-faint); margin: 8px 0 0; }
+  .form-actions { display: flex; align-items: center; gap: 24px; margin-top: 40px; padding-top: 32px; border-top: 1px solid var(--line); }
+  .admin-btn {
+    font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 12px 28px;
+    background: var(--ink); color: var(--paper); border: none; border-radius: 3px;
+    cursor: pointer; transition: all 0.25s ease; box-shadow: var(--shadow);
+  }
+  .admin-btn:hover { background: var(--accent); transform: translateY(-1px); }
+  .admin-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .form-cancel { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--ink-soft); transition: color 0.2s ease; }
+  .form-cancel:hover { color: var(--accent); }
+  .form-msg { font-family: 'JetBrains Mono', monospace; font-size: 13px; margin-top: 16px; min-height: 18px; }
+  @media (max-width: 720px) { .form-grid { grid-template-columns: 1fr; } }
+</style>

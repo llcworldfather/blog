@@ -100,11 +100,12 @@ export async function getPostById(id: string): Promise<Post | null> {
 export async function getPostsByTag(tag: string): Promise<Post[]> {
   const q = query(
     collection(db, COLLECTION_NAME),
-    where('tags', 'array-contains', tag),
-    orderBy('date', 'desc')
+    where('tags', 'array-contains', tag)
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d: { id: string; data: () => DocumentData }) => toPost(d.id, d.data()));
+  const posts = snap.docs.map((d: { id: string; data: () => DocumentData }) => toPost(d.id, d.data()));
+  // 在内存中排序，避免 Firestore 复合索引要求
+  return posts.sort((a, b) => b.date.getTime() - a.date.getTime());
 }
 
 /**

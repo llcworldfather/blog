@@ -1,17 +1,25 @@
 ---
 import { SITE_TITLE, NAV_LINKS } from '../consts';
+import { isAuthenticated } from '../utils/auth';
 
 interface Props {
   currentPath?: string;
 }
 
 const { currentPath = Astro.url.pathname } = Astro.props;
+const loggedIn = isAuthenticated(Astro.request);
 
 const isActive = (href: string) => {
   if (href === '/') return currentPath === '/';
   if (href.startsWith('/#')) return false;
   return currentPath.startsWith(href);
 };
+
+// 管理入口仅登录后显示
+const visibleLinks = NAV_LINKS.filter((link) => {
+  if (link.href === '/admin') return loggedIn;
+  return true;
+});
 ---
 
 <header class="site-header">
@@ -19,12 +27,27 @@ const isActive = (href: string) => {
     <a href="/" class="logo">{SITE_TITLE}<span class="dot">·</span></a>
     <nav>
       {
-        NAV_LINKS.map((link) => (
+        visibleLinks.map((link) => (
           <a href={link.href} class={isActive(link.href) ? 'active' : ''}>
             {link.label}
           </a>
         ))
       }
+      {loggedIn && (
+        <a href="/admin/login" onclick="fetch('/api/auth/logout',{method:'POST'}).then(()=>window.location.href='/')" class="nav-logout">
+          登出
+        </a>
+      )}
     </nav>
   </div>
 </header>
+
+<style>
+  .nav-logout {
+    color: var(--ink-faint) !important;
+    cursor: pointer;
+  }
+  .nav-logout:hover {
+    color: var(--accent) !important;
+  }
+</style>
