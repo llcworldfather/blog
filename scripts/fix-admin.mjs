@@ -1,4 +1,6 @@
----
+import { writeFileSync } from 'node:fs';
+
+const indexContent = `---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 export const prerender = false;
 ---
@@ -111,3 +113,8 @@ export const prerender = false;
     .card-btn { width: auto; height: 44px; }
   }
 </style>
+`;
+
+writeFileSync('E:/blog/src/pages/admin/index.astro', indexContent, 'utf8');
+console.log('index.astro written successfully');
+console.log('File size:', indexContent.length, 'bytes');
