@@ -15,21 +15,21 @@ export const prerender = false;
       <form id="post-form" class="post-form">
         <div class="form-row">
           <label for="title">标题</label>
-          <input type="text" id="title" name="title" required placeholder="文章标题" />
+          <input type="text" id="title" name="title" placeholder="文章标题" />
         </div>
         <div class="form-grid">
           <div class="form-row">
             <label for="slug">URL 标识 (slug)</label>
-            <input type="text" id="slug" name="slug" required placeholder="如：lou-xia-de-mao" />
-            <p class="form-hint">访问地址将为 /posts/你的slug</p>
+            <input type="text" id="slug" name="slug" placeholder="如：lou-xia-de-mao" />
+            <p class="form-hint">访问地址将为 /posts/你的slug；留空保存草稿时会自动生成</p>
           </div>
           <div class="form-row">
             <label for="date">日期</label>
-            <input type="date" id="date" name="date" required />
+            <input type="date" id="date" name="date" />
           </div>
           <div class="form-row">
             <label for="mood">心情/天气</label>
-            <select id="mood" name="mood" required>
+            <select id="mood" name="mood">
               <option value="晴">晴</option>
               <option value="多云">多云</option>
               <option value="雨">雨</option>
@@ -47,14 +47,30 @@ export const prerender = false;
         </div>
         <div class="form-row">
           <label for="excerpt">摘要</label>
-          <textarea id="excerpt" name="excerpt" rows="2" required placeholder="一句话摘要，显示在列表页"></textarea>
+          <textarea id="excerpt" name="excerpt" rows="2" placeholder="一句话摘要，显示在列表页"></textarea>
         </div>
-        <div class="form-row">
-          <label for="content">正文 (Markdown)</label>
-          <textarea id="content" name="content" rows="18" required placeholder="支持 Markdown 语法…"></textarea>
+
+        <div class="form-row md-editor">
+          <div class="md-toolbar">
+            <span class="md-label">正文 (Markdown)</span>
+            <div class="md-tabs" role="tablist">
+              <button type="button" class="md-tab is-active" data-tab="write" role="tab" aria-selected="true">编写</button>
+              <button type="button" class="md-tab" data-tab="preview" role="tab" aria-selected="false">预览</button>
+            </div>
+          </div>
+          <div class="md-pane is-active" data-pane="write">
+            <textarea id="content" name="content" rows="18" placeholder="支持 Markdown 语法…"></textarea>
+          </div>
+          <div class="md-pane" data-pane="preview" hidden>
+            <div class="prose md-preview" id="content-preview">
+              <p class="md-preview-empty">暂无内容可预览</p>
+            </div>
+          </div>
         </div>
+
         <div class="form-actions">
-          <button type="submit" id="submit-btn" class="admin-btn">发布文章</button>
+          <button type="button" id="draft-btn" class="admin-btn admin-btn-ghost">保存草稿</button>
+          <button type="button" id="publish-btn" class="admin-btn">发布文章</button>
           <a href="/admin" class="form-cancel">取消</a>
         </div>
         <p class="form-msg" id="form-msg"></p>
@@ -62,53 +78,70 @@ export const prerender = false;
     </div>
   </section>
   <script>
-    const form = document.getElementById('post-form');
-    const btn = document.getElementById('submit-btn');
+    import {
+      initMarkdownTabs,
+      collectPostPayload,
+      validatePostPayload,
+    } from '../../utils/admin-editor';
+
+    const draftBtn = document.getElementById('draft-btn');
+    const publishBtn = document.getElementById('publish-btn');
     const msg = document.getElementById('form-msg');
-    const dateInput = document.getElementById('date');
+    const dateInput = document.getElementById('date') as HTMLInputElement;
     dateInput.value = new Date().toISOString().split('T')[0];
-    form.addEventListener('submit', async function(e) {
-      e.preventDefault();
-      btn.disabled = true;
-      btn.textContent = '发布中…';
+
+    initMarkdownTabs();
+
+    async function submitPost(status: 'draft' | 'published') {
+      const activeBtn = status === 'draft' ? draftBtn : publishBtn;
+      const otherBtn = status === 'draft' ? publishBtn : draftBtn;
+      if (!activeBtn || !otherBtn || !msg) return;
+
+      const body = collectPostPayload(status);
+      const error = validatePostPayload(body, status);
+      if (error) {
+        msg.style.color = 'var(--accent)';
+        msg.textContent = error;
+        return;
+      }
+
+      activeBtn.disabled = true;
+      otherBtn.disabled = true;
+      activeBtn.textContent = status === 'draft' ? '保存中…' : '发布中…';
       msg.textContent = '';
-      const tags = document.getElementById('tags').value.split(',').map(function(t) { return t.trim(); }).filter(Boolean);
-      const body = {
-        title: document.getElementById('title').value,
-        slug: document.getElementById('slug').value,
-        date: document.getElementById('date').value,
-        mood: document.getElementById('mood').value,
-        tags: tags,
-        excerpt: document.getElementById('excerpt').value,
-        content: document.getElementById('content').value
-      };
+
       try {
         const res = await fetch('/api/posts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
+          body: JSON.stringify(body),
         });
         const data = await res.json();
         if (res.ok) {
           msg.style.color = 'var(--moss)';
-          msg.textContent = '发布成功！正在跳转…';
-          setTimeout(function() { window.location.href = '/admin'; }, 1000);
+          msg.textContent = status === 'draft' ? '草稿已保存！正在跳转…' : '发布成功！正在跳转…';
+          setTimeout(() => { window.location.href = '/admin'; }, 1000);
         } else {
           msg.style.color = 'var(--accent)';
-          msg.textContent = data.error || '发布失败';
-          btn.disabled = false;
-          btn.textContent = '发布文章';
+          msg.textContent = data.error || '操作失败';
+          activeBtn.disabled = false;
+          otherBtn.disabled = false;
+          activeBtn.textContent = status === 'draft' ? '保存草稿' : '发布文章';
         }
-      } catch(err) {
+      } catch {
         msg.style.color = 'var(--accent)';
-        msg.textContent = '网络错误，发布失败';
-        btn.disabled = false;
-        btn.textContent = '发布文章';
+        msg.textContent = '网络错误，请重试';
+        activeBtn.disabled = false;
+        otherBtn.disabled = false;
+        activeBtn.textContent = status === 'draft' ? '保存草稿' : '发布文章';
       }
-    });
+    }
+
+    draftBtn?.addEventListener('click', () => submitPost('draft'));
+    publishBtn?.addEventListener('click', () => submitPost('published'));
   </script>
 </BaseLayout>
-<style>
+<style is:global>
   .admin-page { padding: 72px 0 96px; }
   .admin-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 48px; padding-bottom: 28px; border-bottom: 1px solid var(--line); }
   .admin-title-group { display: flex; flex-direction: column; gap: 6px; }
@@ -119,17 +152,51 @@ export const prerender = false;
   .post-form { max-width: 720px; }
   .form-row { margin-bottom: 24px; }
   .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-  .form-row label { display: block; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-faint); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .form-row label, .md-label { display: block; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-faint); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
   .form-row input, .form-row select, .form-row textarea { width: 100%; padding: 10px 14px; border: 1px solid var(--line); border-radius: 2px; background: var(--paper-alt); font-family: 'Noto Serif SC', serif; font-size: 15px; color: var(--ink); box-sizing: border-box; }
   .form-row input:focus, .form-row select:focus, .form-row textarea:focus { outline: none; border-color: var(--accent); }
   .form-row textarea { resize: vertical; font-family: 'JetBrains Mono', monospace; font-size: 14px; line-height: 1.6; }
   .form-hint { font-size: 12px; color: var(--ink-faint); margin: 6px 0 0; }
-  .form-actions { display: flex; align-items: center; gap: 20px; margin-top: 32px; }
+  .md-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 10px; }
+  .md-label { margin-bottom: 0; }
+  .md-tabs { display: inline-flex; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; background: var(--paper-deep); }
+  .md-tab { font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 6px 14px; border: none; background: transparent; color: var(--ink-soft); cursor: pointer; transition: background 0.2s ease, color 0.2s ease; }
+  .md-tab.is-active { background: var(--paper-alt); color: var(--ink); box-shadow: inset 0 -2px 0 var(--accent); }
+  .md-tab:hover:not(.is-active) { color: var(--accent); }
+  .md-pane { width: 100%; }
+  .md-pane textarea,
+  .md-preview {
+    display: block;
+    width: 100%;
+    min-height: 360px;
+    height: 360px;
+    padding: 10px 14px;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    background: var(--paper-alt);
+    box-sizing: border-box;
+  }
+  .md-pane textarea { resize: vertical; font-family: 'JetBrains Mono', monospace; font-size: 14px; line-height: 1.6; color: var(--ink); }
+  .md-preview {
+    max-width: none;
+    overflow: auto;
+    font-size: 15px;
+    line-height: 1.75;
+    outline: none;
+  }
+  .md-preview:focus { border-color: var(--accent); }
+  .md-preview-empty { color: var(--ink-faint); font-style: italic; margin: 0; }
+  .form-actions { display: flex; align-items: center; gap: 12px; margin-top: 32px; flex-wrap: wrap; }
   .admin-btn { font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 10px 24px; background: var(--ink); color: var(--paper); border: none; border-radius: 2px; cursor: pointer; transition: background 0.2s ease; }
   .admin-btn:hover { background: var(--accent); }
   .admin-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-  .form-cancel { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--ink-soft); text-decoration: none; }
+  .admin-btn-ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  .admin-btn-ghost:hover { background: var(--paper-deep); color: var(--accent); border-color: var(--accent-soft); }
+  .form-cancel { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--ink-soft); text-decoration: none; margin-left: 8px; }
   .form-cancel:hover { color: var(--accent); }
   .form-msg { font-family: 'JetBrains Mono', monospace; font-size: 13px; margin-top: 16px; min-height: 18px; }
-  @media (max-width: 720px) { .form-grid { grid-template-columns: 1fr; } }
+  @media (max-width: 720px) {
+    .form-grid { grid-template-columns: 1fr; }
+    .md-toolbar { flex-direction: column; align-items: flex-start; }
+  }
 </style>

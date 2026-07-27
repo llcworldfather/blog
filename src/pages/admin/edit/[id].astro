@@ -18,8 +18,18 @@ export const prerender = false;
     </div>
   </section>
   <script>
-    const form = document.getElementById('post-form');
+    import {
+      escapeHtml,
+      escapeTextarea,
+      markdownEditorHtml,
+      initMarkdownTabs,
+      collectPostPayload,
+      validatePostPayload,
+    } from '../../../utils/admin-editor';
+
+    const form = document.getElementById('post-form') as HTMLFormElement;
     const postId = window.location.pathname.split('/').pop();
+
     async function loadPost() {
       try {
         const res = await fetch('/api/posts/' + postId);
@@ -29,70 +39,93 @@ export const prerender = false;
         }
         const post = await res.json();
         renderForm(post);
-      } catch(err) {
+      } catch {
         form.innerHTML = '<p class="admin-error">加载失败</p>';
       }
     }
-    function renderForm(post) {
+
+    function renderForm(post: any) {
       const dateStr = new Date(post.date).toISOString().split('T')[0];
+      const isDraft = post.status === 'draft';
       form.innerHTML =
-        '<div class="form-row"><label for="title">标题</label><input type="text" id="title" value="' + post.title + '" required /></div>' +
+        '<div class="form-row"><label for="title">标题</label><input type="text" id="title" value="' + escapeHtml(post.title) + '" /></div>' +
         '<div class="form-grid">' +
-          '<div class="form-row"><label for="slug">URL 标识 (slug)</label><input type="text" id="slug" value="' + post.slug + '" required /></div>' +
-          '<div class="form-row"><label for="date">日期</label><input type="date" id="date" value="' + dateStr + '" required /></div>' +
-          '<div class="form-row"><label for="mood">心情/天气</label><select id="mood" required>' +
+          '<div class="form-row"><label for="slug">URL 标识 (slug)</label><input type="text" id="slug" value="' + escapeHtml(post.slug) + '" /><p class="form-hint">访问地址将为 /posts/你的slug</p></div>' +
+          '<div class="form-row"><label for="date">日期</label><input type="date" id="date" value="' + dateStr + '" /></div>' +
+          '<div class="form-row"><label for="mood">心情/天气</label><select id="mood">' +
             ['晴','多云','雨','夜','风','雪','雾'].map(function(m) {
               return '<option value="' + m + '"' + (post.mood === m ? ' selected' : '') + '>' + m + '</option>';
             }).join('') +
           '</select></div>' +
-          '<div class="form-row"><label for="tags">标签</label><input type="text" id="tags" value="' + (post.tags || []).join(', ') + '" /><p class="form-hint">多个标签用英文逗号隔开</p></div>' +
+          '<div class="form-row"><label for="tags">标签</label><input type="text" id="tags" value="' + escapeHtml((post.tags || []).join(', ')) + '" /><p class="form-hint">多个标签用英文逗号隔开</p></div>' +
         '</div>' +
-        '<div class="form-row"><label for="excerpt">摘要</label><textarea id="excerpt" rows="2" required>' + post.excerpt + '</textarea></div>' +
-        '<div class="form-row"><label for="content">正文 (Markdown)</label><textarea id="content" rows="18" required>' + post.content + '</textarea></div>' +
-        '<div class="form-actions"><button type="submit" id="submit-btn" class="admin-btn">保存修改</button><a href="/admin" class="form-cancel">取消</a></div>' +
+        '<div class="form-row"><label for="excerpt">摘要</label><textarea id="excerpt" rows="2">' + escapeTextarea(post.excerpt) + '</textarea></div>' +
+        markdownEditorHtml(post.content || '') +
+        '<div class="form-actions">' +
+          '<button type="button" id="draft-btn" class="admin-btn admin-btn-ghost">' + (isDraft ? '保存草稿' : '转为草稿') + '</button>' +
+          '<button type="button" id="publish-btn" class="admin-btn">' + (isDraft ? '发布文章' : '保存并发布') + '</button>' +
+          '<a href="/admin" class="form-cancel">取消</a>' +
+        '</div>' +
         '<p class="form-msg" id="form-msg"></p>';
-      form.addEventListener('submit', handleSubmit);
+
+      initMarkdownTabs(form);
+      document.getElementById('draft-btn')?.addEventListener('click', () => submitPost('draft'));
+      document.getElementById('publish-btn')?.addEventListener('click', () => submitPost('published'));
     }
-    async function handleSubmit(e) {
-      e.preventDefault();
-      const btn = document.getElementById('submit-btn');
+
+    async function submitPost(status: 'draft' | 'published') {
+      const draftBtn = document.getElementById('draft-btn') as HTMLButtonElement | null;
+      const publishBtn = document.getElementById('publish-btn') as HTMLButtonElement | null;
       const msg = document.getElementById('form-msg');
-      btn.disabled = true;
-      btn.textContent = '保存中…';
+      if (!draftBtn || !publishBtn || !msg) return;
+
+      const body = collectPostPayload(status);
+      const error = validatePostPayload(body, status);
+      if (error) {
+        msg.style.color = 'var(--accent)';
+        msg.textContent = error;
+        return;
+      }
+
+      const activeBtn = status === 'draft' ? draftBtn : publishBtn;
+      const otherBtn = status === 'draft' ? publishBtn : draftBtn;
+      const draftLabel = draftBtn.textContent || '保存草稿';
+      const publishLabel = publishBtn.textContent || '发布文章';
+
+      activeBtn.disabled = true;
+      otherBtn.disabled = true;
+      activeBtn.textContent = status === 'draft' ? '保存中…' : '发布中…';
       msg.textContent = '';
-      const tags = document.getElementById('tags').value.split(',').map(function(t) { return t.trim(); }).filter(Boolean);
-      const body = {
-        title: document.getElementById('title').value,
-        slug: document.getElementById('slug').value,
-        date: document.getElementById('date').value,
-        mood: document.getElementById('mood').value,
-        tags: tags,
-        excerpt: document.getElementById('excerpt').value,
-        content: document.getElementById('content').value
-      };
+
       try {
         const res = await fetch('/api/posts/' + postId, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
+          body: JSON.stringify(body),
         });
         if (res.ok) {
           msg.style.color = 'var(--moss)';
-          msg.textContent = '保存成功！正在跳转…';
-          setTimeout(function() { window.location.href = '/admin'; }, 1000);
+          msg.textContent = status === 'draft' ? '草稿已保存！正在跳转…' : '发布成功！正在跳转…';
+          setTimeout(() => { window.location.href = '/admin'; }, 1000);
         } else {
+          const data = await res.json().catch(() => ({}));
           msg.style.color = 'var(--accent)';
-          msg.textContent = '保存失败';
-          btn.disabled = false;
-          btn.textContent = '保存修改';
+          msg.textContent = data.error || '保存失败';
+          activeBtn.disabled = false;
+          otherBtn.disabled = false;
+          draftBtn.textContent = draftLabel;
+          publishBtn.textContent = publishLabel;
         }
-      } catch(err) {
+      } catch {
         msg.style.color = 'var(--accent)';
         msg.textContent = '网络错误';
-        btn.disabled = false;
-        btn.textContent = '保存修改';
+        activeBtn.disabled = false;
+        otherBtn.disabled = false;
+        draftBtn.textContent = draftLabel;
+        publishBtn.textContent = publishLabel;
       }
     }
+
     loadPost();
   </script>
 </BaseLayout>
@@ -107,19 +140,53 @@ export const prerender = false;
   .post-form { max-width: 720px; }
   .form-row { margin-bottom: 24px; }
   .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-  .form-row label { display: block; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-faint); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .form-row label, .md-label { display: block; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-faint); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
   .form-row input, .form-row select, .form-row textarea { width: 100%; padding: 10px 14px; border: 1px solid var(--line); border-radius: 2px; background: var(--paper-alt); font-family: 'Noto Serif SC', serif; font-size: 15px; color: var(--ink); box-sizing: border-box; }
   .form-row input:focus, .form-row select:focus, .form-row textarea:focus { outline: none; border-color: var(--accent); }
   .form-row textarea { resize: vertical; font-family: 'JetBrains Mono', monospace; font-size: 14px; line-height: 1.6; }
   .form-hint { font-size: 12px; color: var(--ink-faint); margin: 6px 0 0; }
-  .form-actions { display: flex; align-items: center; gap: 20px; margin-top: 32px; }
+  .md-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 10px; }
+  .md-label { margin-bottom: 0; }
+  .md-tabs { display: inline-flex; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; background: var(--paper-deep); }
+  .md-tab { font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 6px 14px; border: none; background: transparent; color: var(--ink-soft); cursor: pointer; transition: background 0.2s ease, color 0.2s ease; }
+  .md-tab.is-active { background: var(--paper-alt); color: var(--ink); box-shadow: inset 0 -2px 0 var(--accent); }
+  .md-tab:hover:not(.is-active) { color: var(--accent); }
+  .md-pane { width: 100%; }
+  .md-pane textarea,
+  .md-preview {
+    display: block;
+    width: 100%;
+    min-height: 360px;
+    height: 360px;
+    padding: 10px 14px;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    background: var(--paper-alt);
+    box-sizing: border-box;
+  }
+  .md-pane textarea { resize: vertical; font-family: 'JetBrains Mono', monospace; font-size: 14px; line-height: 1.6; color: var(--ink); }
+  .md-preview {
+    max-width: none;
+    overflow: auto;
+    font-size: 15px;
+    line-height: 1.75;
+    outline: none;
+  }
+  .md-preview:focus { border-color: var(--accent); }
+  .md-preview-empty { color: var(--ink-faint); font-style: italic; margin: 0; }
+  .form-actions { display: flex; align-items: center; gap: 12px; margin-top: 32px; flex-wrap: wrap; }
   .admin-btn { font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 10px 24px; background: var(--ink); color: var(--paper); border: none; border-radius: 2px; cursor: pointer; transition: background 0.2s ease; }
   .admin-btn:hover { background: var(--accent); }
   .admin-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-  .form-cancel { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--ink-soft); text-decoration: none; }
+  .admin-btn-ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  .admin-btn-ghost:hover { background: var(--paper-deep); color: var(--accent); border-color: var(--accent-soft); }
+  .form-cancel { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--ink-soft); text-decoration: none; margin-left: 8px; }
   .form-cancel:hover { color: var(--accent); }
   .form-msg { font-family: 'JetBrains Mono', monospace; font-size: 13px; margin-top: 16px; min-height: 18px; }
   .admin-loading, .admin-error { color: var(--ink-soft); font-size: 15px; }
   .admin-error { color: var(--accent); }
-  @media (max-width: 720px) { .form-grid { grid-template-columns: 1fr; } }
+  @media (max-width: 720px) {
+    .form-grid { grid-template-columns: 1fr; }
+    .md-toolbar { flex-direction: column; align-items: flex-start; }
+  }
 </style>
