@@ -6,6 +6,8 @@ export const SITE_URL = 'https://shiguang-zhaji.example.com';
 export const NAV_LINKS = [
   { href: '/', label: '首页' },
   { href: '/posts', label: '随笔' },
+  { href: '/archive', label: '归档' },
+  { href: '/search', label: '搜索' },
   { href: '/about', label: '关于' },
   { href: '/#subscribe', label: '订阅' },
   { href: '/admin', label: '管理' },

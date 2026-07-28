@@ -1,0 +1,62 @@
+---
+import { getAllPosts } from '../utils/posts';
+import { groupPostsByMonth, getReadingStats } from '../utils/reading';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import MoodIcon from '../components/MoodIcon.astro';
+import Subscribe from '../components/Subscribe.astro';
+
+export const prerender = false;
+
+const posts = await getAllPosts();
+const groups = groupPostsByMonth(posts);
+---
+
+<BaseLayout title="归档" description="按时间线回顾所有手记">
+  <section class="archive-page">
+    <div class="wrap">
+      <div class="archive-intro">
+        <span class="admin-label" style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.2em;color:var(--ink-faint);text-transform:uppercase;">ARCHIVE</span>
+        <h1>时间轴</h1>
+        <p class="archive-sub">共 {posts.length} 篇手记 · 顺着日子往回翻</p>
+      </div>
+
+      {groups.length === 0 ? (
+        <p class="archive-empty">还没有手记</p>
+      ) : (
+        <div class="archive-timeline">
+          {groups.map((yearGroup) => (
+            <section class="archive-year" id={`y-${yearGroup.year}`}>
+              <h2 class="archive-year-title">{yearGroup.year}</h2>
+              {yearGroup.months.map((month) => (
+                <div class="archive-month">
+                  <h3 class="archive-month-title">{month.label}</h3>
+                  <ul class="archive-list">
+                    {month.posts.map((post) => {
+                      const stats = getReadingStats(post.content);
+                      return (
+                        <li class="archive-item">
+                          <span class="archive-mood" title={post.mood}>
+                            <MoodIcon mood={post.mood} size={14} />
+                          </span>
+                          <span class="archive-day num">{String(post.date.getDate()).padStart(2, '0')}</span>
+                          <div class="archive-body">
+                            <a href={`/posts/${post.slug}`} class="archive-link">{post.title}</a>
+                            <span class="archive-meta">
+                              {post.mood} · {stats.label}
+                            </span>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
+            </section>
+          ))}
+        </div>
+      )}
+    </div>
+  </section>
+
+  <Subscribe />
+</BaseLayout>

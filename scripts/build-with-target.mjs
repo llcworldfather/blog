@@ -15,4 +15,14 @@ const result = spawnSync('npx', ['astro', 'build'], {
   shell: true,
 });
 
-process.exit(result.status ?? 1);
+if ((result.status ?? 1) !== 0) {
+  process.exit(result.status ?? 1);
+}
+
+const pagefind = spawnSync('node', ['scripts/build-pagefind.mjs'], {
+  stdio: 'inherit',
+  env: process.env,
+  shell: true,
+});
+
+process.exit(pagefind.status ?? 0);

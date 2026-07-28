@@ -1,5 +1,11 @@
 ---
-import { getPostBySlug } from '../../utils/posts';
+import { getAllPosts } from '../../utils/posts';
+import {
+  getReadingStats,
+  getRelatedPosts,
+  getAdjacentPosts,
+  formatPostDate,
+} from '../../utils/reading';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import MoodIcon from '../../components/MoodIcon.astro';
 import Subscribe from '../../components/Subscribe.astro';
@@ -9,20 +15,22 @@ import { marked } from 'marked';
 export const prerender = false;
 
 const { slug } = Astro.params;
-const post = await getPostBySlug(slug as string);
+const allPosts = await getAllPosts();
+const post = allPosts.find((p) => p.slug === slug) ?? null;
 
 if (!post) {
   return Astro.redirect('/404');
 }
 
 const htmlContent = marked.parse(post.content) as string;
-
-const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const dateLabel = `${months[post.date.getMonth()]} ${String(post.date.getDate()).padStart(2, '0')}, ${post.date.getFullYear()}`;
+const stats = getReadingStats(post.content);
+const { prev, next } = getAdjacentPosts(post.slug, allPosts);
+const related = getRelatedPosts(post, allPosts, 3);
+const dateLabel = formatPostDate(post.date);
 ---
 
 <BaseLayout title={post.title} description={post.excerpt}>
-  <article class="article">
+  <article class="article" data-pagefind-body>
     <div class="wrap">
       <a href="/posts" class="back">← 返回手记列表</a>
 
@@ -30,7 +38,10 @@ const dateLabel = `${months[post.date.getMonth()]} ${String(post.date.getDate())
         <span class="mood-icon" title={post.mood} style="position:static; width:40px; height:40px; margin-bottom:18px;">
           <MoodIcon mood={post.mood} size={20} />
         </span>
-        <span class="entry-date"><span class="num">{dateLabel}</span> · {post.mood}</span>
+        <span class="entry-date">
+          <span class="num">{dateLabel}</span> · {post.mood}
+          <span class="reading-meta"> · {stats.label}</span>
+        </span>
         <h1>{post.title}</h1>
         <div class="entry-foot">
           {
@@ -42,6 +53,45 @@ const dateLabel = `${months[post.date.getMonth()]} ${String(post.date.getDate())
       </header>
 
       <div class="prose" set:html={htmlContent} />
+
+      {(prev || next) && (
+        <nav class="post-nav" aria-label="上下篇导航">
+          {prev ? (
+            <a href={`/posts/${prev.slug}`} class="post-nav-item prev">
+              <span class="post-nav-label">◂ 上一篇</span>
+              <span class="post-nav-title">{prev.title}</span>
+            </a>
+          ) : (
+            <span class="post-nav-item prev is-empty"></span>
+          )}
+          {next ? (
+            <a href={`/posts/${next.slug}`} class="post-nav-item next">
+              <span class="post-nav-label">下一篇 ▸</span>
+              <span class="post-nav-title">{next.title}</span>
+            </a>
+          ) : (
+            <span class="post-nav-item next is-empty"></span>
+          )}
+        </nav>
+      )}
+
+      {related.length > 0 && (
+        <section class="related-posts">
+          <div class="section-label">相关手记</div>
+          <div class="related-list">
+            {related.map((item) => {
+              const itemStats = getReadingStats(item.content);
+              return (
+                <a href={`/posts/${item.slug}`} class="related-card">
+                  <span class="related-date num">{formatPostDate(item.date, false)} · {item.mood}</span>
+                  <strong>{item.title}</strong>
+                  <span class="related-meta">{itemStats.label}</span>
+                </a>
+              );
+            })}
+          </div>
+        </section>
+      )}
     </div>
   </article>
 

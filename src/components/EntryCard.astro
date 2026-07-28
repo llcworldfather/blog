@@ -1,6 +1,7 @@
 ---
 import MoodIcon from './MoodIcon.astro';
 import { slugify } from '../utils/slugify';
+import { getReadingStats, formatPostDate } from '../utils/reading';
 import type { Post } from '../utils/posts';
 
 interface Props {
@@ -8,16 +9,18 @@ interface Props {
 }
 
 const { entry } = Astro.props;
-
-const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const dateLabel = `${months[entry.date.getMonth()]} ${String(entry.date.getDate()).padStart(2, '0')}`;
+const dateLabel = formatPostDate(entry.date, false);
+const stats = getReadingStats(entry.content);
 ---
 
 <article class="entry">
   <span class="mood-icon" title={entry.mood}>
     <MoodIcon mood={entry.mood} />
   </span>
-  <span class="entry-date"><span class="num">{dateLabel}</span> · {entry.mood}</span>
+  <span class="entry-date">
+    <span class="num">{dateLabel}</span> · {entry.mood}
+    <span class="reading-meta"> · {stats.label}</span>
+  </span>
   <h3><a href={`/posts/${entry.slug}`}>{entry.title}</a></h3>
   <p class="excerpt">{entry.excerpt}</p>
   <div class="entry-foot">
